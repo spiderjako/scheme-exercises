@@ -48,8 +48,11 @@
         #f)))
 
 (define (toBinary n)
-  (define (helper newN sum)
-    (if (= newN 1) (+ (* sum 10) 1)
-        (if (= (remainder newN 2) 1) (helper (quotient newN 2) (+ (* sum 10) 1))
-            (helper (quotient newN 2) (* sum 10)))))
-  (reverse-int (helper n 0)))
+  (if (= n 0) 0
+      (+ (remainder n 2) (* 10 (toBinary (quotient n 2))))))
+
+(define (toDecimal binary)
+  (define (helper n decimal power)
+    (if (= n 0) decimal
+        (helper (quotient n 10) (+ (* (remainder n 2) (fast-sq 2 power)) decimal) (+ power 1))))
+  (helper binary 0 0))
