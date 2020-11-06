@@ -1,0 +1,13 @@
+(define (draw-line acc m)
+    (define (accumulate op null-value term a next b)
+    (if (> a b) null-value
+        (op (term a) (accumulate op null-value term (next a) next b))))
+    (define (map-chars char)
+      (cond ((= char 0) #\u250C)
+          ((= char 1) #\u2500)
+          ((= char 2) #\u2510))
+    )
+    (define (1+ x) (+ x 1))
+    (accumulate display 0 map-chars 0 1+ m)
+)
+
