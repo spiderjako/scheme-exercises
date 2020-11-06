@@ -1,0 +1,10 @@
+(define (accumulate op nv a b term next)
+  (if (> a b) nv
+      (accumulate op nv (next a) b term next)))
+
+(define (id x) x)
+(define (+1 x) (+ x 1))
+
+(define (sum a b)
+  (accumulate + 0 a b id +1))
+
