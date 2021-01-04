@@ -1,0 +1,166 @@
+(define (1+ x) (+ 1 x))
+(define (1- x) (- x 1))
+
+(define (char-new-tree? c)
+  (and (char? c)
+       (char=? c #\{)))
+
+(define (char-star? c)
+  (and (char? c)
+       (char=? c #\*)))
+
+(define (char-closing-bracket? c)
+  (and (char? c)
+       (char=? c #\})))
+
+(define (filter-accumulate p? op nv a b term next)
+  (cond ((> a b) nv)
+        ((p? a) (op (term a)
+                    (filter-accumulate p? op nv (next a) b term next)))
+        (else       (filter-accumulate p? op nv (next a) b term next))))
+
+(define (cut-useless-spaces str)
+  (define (not-whitespace? i)
+    (not (char-whitespace? (string-ref str i))))
+  
+  (define (str-id i)
+    (substring str i (1+ i)))
+  (filter-accumulate not-whitespace? string-append "" 0 (- (string-length str) 1) str-id 1+))
+
+(define (tree? str)
+  (define (whitespace-at-start? i)
+    (cond ((>= i (string-length str)) #f)
+          ((char-new-tree?   (string-ref str i)) (and (balanced-brackets i) (number-after-bracket? (1+ i))))
+          ((char-star?       (string-ref str i)) (doesnt-have-other-elements? (1+ i)))
+          ((char-whitespace? (string-ref str i)) (whitespace-at-start? (1+ i)))
+          (else                                  #f)))
+
+  (define (number-after-bracket? i)
+    (cond ((>= i (string-length str)) #f)
+          ((char-numeric?    (string-ref str i)) (number (1+ i)))
+          ((char-whitespace? (string-ref str i)) (number-after-bracket? (1+ i)))
+          (else                                  #f)))
+
+  (define (number i)
+    (cond ((>= i (string-length str)) #f)
+          ((char-numeric?    (string-ref str i)) (number (1+ i)))
+          ((char-whitespace? (string-ref str i)) (whitespace-after-number (1+ i)))
+          ((char-new-tree?   (string-ref str i)) (and (balanced-brackets i) (number-after-bracket? (1+ i))))
+          ((char-star?       (string-ref str i)) (element-after-star (1+ i)))
+          (else              #f)))
+
+  (define (whitespace-after-number i)
+    (cond ((>= i (string-length str)) #f)
+          ((char-whitespace? (string-ref str i)) (whitespace-after-number (1+ i)))
+          ((char-new-tree?   (string-ref str i)) (and (balanced-brackets i) (number-after-bracket? (1+ i))))
+          ((char-star?       (string-ref str i)) (element-after-star (1+ i)))
+          (else                                  #f)))
+
+  (define (element-after-star i)
+    (cond ((>= i (string-length str)) #f)
+          ((char-star?       (string-ref str i)) (element-after-second-star (1+ i)))
+          ((char-new-tree?   (string-ref str i)) (and (balanced-brackets i) (number-after-bracket? (1+ i))))
+          ((char-whitespace? (string-ref str i)) (element-after-star (1+ i)))
+          (else                                #f)))
+
+  (define (element-after-second-star i)
+    (cond ((>= i (string-length str)) #f)
+          ((char-whitespace?      (string-ref str i)) (element-after-second-star (1+ i)))
+          ((char-closing-bracket? (string-ref str i)) (element-after-tree (1+ i)))
+          (else                                       #f)))
+
+  (define (element-after-tree i)
+    (cond ((>= i (string-length str)) #t)
+          ((char-whitespace?      (string-ref str i)) (element-after-tree (1+ i)))
+          ((char-closing-bracket? (string-ref str i)) (element-after-tree (1+ i)))
+          ((char-new-tree?        (string-ref str i)) (and (balanced-brackets i) (number-after-bracket? (1+ i))))
+          ((char-star?            (string-ref str i)) (element-after-second-star (1+ i)))
+          (else                                       #f)))
+
+  (define (balanced-brackets i)
+    (define (helper j counter children)
+      (cond ((and (>= j (string-length str)) (not (= counter 0)))                                      #f)
+            ((and (>= j (string-length str)) (= counter 0))                                            #t)
+            ((>= children 3)                                                                           #f)
+            ((and (= counter 1) (and (not (= children 2)) (char-closing-bracket? (string-ref str j)))) #f)
+            ((and (= counter 1) (char-closing-bracket?                           (string-ref str j)))  #t)
+            ((and (not (= counter 1)) (char-closing-bracket?                     (string-ref str j)))  (helper (1+ j) (1- counter) children))
+            ((char-new-tree?                                                     (string-ref str j))   (if (= counter 1) (helper (1+ j) (1+ counter) (1+ children)) (helper (1+ j) (1+ counter) children)))                                      
+            ((char-star?                                                         (string-ref str j))   (if (= counter 1) (helper (1+ j) counter (1+ children)) (helper (1+ j) counter children)))
+            (else                                                                                      (helper (1+ j) counter children))))
+    (helper i 0 0))
+            
+  (define (string-balanced-brackets)
+    (define (helper j counter)
+      (cond ((and (>= j (string-length str)) (= counter 0))       #t)
+            ((and (>= j (string-length str)) (not (= counter 0))) #f)
+            ((char-new-tree?                 (string-ref str j))  (helper (1+ j) (1+ counter)))
+            ((char-closing-bracket?          (string-ref str j))  (helper (1+ j) (1- counter)))
+            (else                                                 (helper (1+ j) counter))))
+    (helper 0 0))
+
+  (define (doesnt-have-other-elements? i)
+    (cond ((>= i (string-length str)) #t)
+          ((char-whitespace? (string-ref str i)) (doesnt-have-other-elements? (1+ i)))
+          (else                       #f)))
+
+  (and (string-balanced-brackets) (whitespace-at-start? 0)))
+
+(define (string->tree str)
+  (define (helper newStr)
+    (define (new-tree i)
+      (if (char-new-tree?(string-ref newStr i)) (number (1+ i) 0)
+          `()))
+  
+    (define (number i currNumber)
+      (if (char-numeric? (string-ref newStr i)) (number (1+ i) (+ (* currNumber 10) (string->number (substring newStr i (1+ i)))))
+          (list currNumber (new-tree i) (new-tree (find-second-child i 0 0)))))
+
+    (define (find-second-child i counter child)
+      (cond ((and (= counter 0) (= child 0)) (if (char-star? (string-ref newStr i)) (find-second-child (1+ i) counter (1+ child))
+                                                 (find-second-child (1+ i) (1+ counter) (1+ child))))
+            ((char-closing-bracket? (string-ref newStr i)) (find-second-child (1+ i) (1- counter) child))
+            ((and (= counter 0) (= child 1)) i)
+            ((char-new-tree?        (string-ref newStr i)) (find-second-child (1+ i) (1+ counter) child))
+            (else (find-second-child (1+ i) counter child))))
+    (new-tree 0))
+  
+  (if (not (tree? str)) #f
+      (helper (cut-useless-spaces str))))
+
+(define root-tree car)
+(define left-tree cadr)
+(define right-tree caddr)
+(define empty? null?)
+
+(define (list-tree? t)
+  (or (empty? t)
+      (and (and (list? t)
+                (= (length t) 3))
+           (list-tree? (left-tree t))
+           (list-tree? (right-tree t)))))
+
+(define (balanced? tree)
+  (define (height root)
+    (if (empty? root) 0
+        (+ 1 (max (height (left-tree root)) (height (right-tree root))))))
+
+  (define (helper currTree)
+    (if (empty? currTree) #t
+        (and (and (balanced? (left-tree currTree)) (balanced? (right-tree currTree))) (<= (abs (- (height (left-tree currTree)) (height (right-tree currTree)))) 1))))
+  (and (list-tree? tree) (helper tree)))
+
+(define (ordered? tree)
+  (define (helper currTree)
+    (cond ((empty? currTree) #t)
+          ((and (not (empty? (left-tree currTree))) (> (root-tree (left-tree currTree)) (root-tree currTree))) #f)
+          ((and (not (empty? (right-tree currTree))) (< (root-tree (right-tree currTree)) (root-tree currTree))) #f)
+          ((or (not (ordered? (left-tree currTree))) (not (ordered? (right-tree currTree)))) #f)
+          (else #t)))
+
+  (and (list-tree? tree) (helper tree)))
+
+(define (tree->string tree)
+  (if (empty? tree) "*"
+      (string-append (string-append "{" (string-append (number->string (root-tree tree)) " "))
+                     (string-append (string-append (string-append (tree->string (left-tree tree)) " ") (tree->string (right-tree tree))) "}"))))

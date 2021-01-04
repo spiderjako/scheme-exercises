@@ -1,0 +1,113 @@
+(define head car)
+(define tail cdr)
+
+(define (length* lst)
+  (define (helper lst res)
+    (if (null? lst) res
+        (helper (tail lst) (+ 1 res))))
+  (helper lst 0))
+
+(define (member? x lst)
+  (cond ((null? lst) #f)
+        ((equal? (head lst) x) #t)
+        (else (member? x (tail lst)))))
+
+(define (filter p? lst)
+  (if (null? lst) `()
+      (if (p? (head lst)) (cons (head lst) (filter p? (tail lst)))
+          (filter p? (tail lst)))))
+
+(define (take n lst)
+  (if (or (= n 0) (null? lst)) '()
+      (cons (head lst) (take (- n 1) (tail lst)))))
+
+(define (drop n lst)
+  (if (or (= n 0) (null? lst)) lst
+      (drop (- n 1) (cdr lst))))
+
+(define (all? p? lst)
+  (if (null? lst) #t
+      (and (p? (head lst)) (all? p? (tail lst)))))
+
+(define (any? p? lst)
+  (and (not (null? lst))
+      (or (p? (head lst)) (any? p? (tail lst)))))
+
+(define (zip lst1 lst2)
+  (if (or (null? lst1) (null? lst2)) `()
+      (cons (cons (head lst1) (head lst2)) (zip (tail lst1) (tail lst2)))))
+
+(define (zipWith f lst1 lst2)
+  (if (or (null? lst1) (null? lst2)) `()
+      (cons (f (head lst1) (head lst2)) (zipWith f (tail lst1) (tail lst2)))))
+
+(define (zip2 lst1 lst2)
+  (zipWith cons lst1 lst2))
+
+(define (sorted? lst)
+  (if (null? (tail lst)) #t
+      (and (<= (head lst) (head (tail lst))) (sorted? (tail lst)))))
+
+(define (uniques lst)
+  (if (null? lst) `()
+      (cons (head lst)
+            (uniques (filter (lambda (x) (not (equal? x (head lst))))
+                     (tail lst))))))
+
+(define (insert val lst)
+  (cond ((null? lst) (list val))
+        ((> val (head lst)) (cons (head lst) (insert val (tail lst))))
+        (else (cons val lst))))
+
+(define (foldr op nv lst)
+  (if (null? lst) nv
+      (op (head lst) (foldr op nv (tail lst)))))
+
+
+(define (insertion-sort lst)
+  (foldr insert '() lst))
+
+
+(define (sub? i1 i2)
+  (and (>= (head i1) (head i2)) (<= (tail i1) (tail i2))))
+
+(define (int-length i1)
+  (-(tail i1) (head i1)))
+
+(define (>-int i1 i2)
+  (if (>(int-length i1) (int-length i2)) i1 i2))
+
+(define (maximum? lst)
+  (foldr >-int (head lst) (tail lst)))
+
+(define (insert-interval val lst)
+  (cond ((null? lst) (list val))
+        ((> (head val) (head (head lst))) (cons (head lst) (insert-interval val (tail lst))))
+        (else (cons val lst))))
+
+(define (sort-intervals il)
+  (foldr insert-interval '() il))
+
+(define (longest-interval-subsets il)
+  (define longest-interval (maximum? il))
+  (sort-intervals (filter (lambda (x) (sub? x longest-interval)) il)))
+
+(define (compose f g)
+  (lambda (x) (f (g x))))
+(define (1+ x) (+ x 1))
+(define (sq x) (* x x))
+(define (^3 x) (* x x x))
+
+(define (compose-n . fns)
+  (foldr compose (lambda (x) x) fns))
+
+(define (group-by f lst)
+  (define returned (uniques (map f lst)))
+  (define (elements-for x)
+    (filter (lambda (el) (equal? x (f el))) lst))
+  (map (lambda (x) (list x (elements-for x))) returned))
+
+(define (zipWith* f . lists)
+  (if (or (null? lists) (any? null? lists)) '()
+      (cons (apply f (map head lists))
+            (apply zipWith* f (map tail lists)))))
